@@ -1,0 +1,31 @@
+PDF
+ ↓
+PyMuPDF
+ ↓
+PageIndex-style structure
+ ↓
+Custom hierarchical embedding index
+ │
+ ├── node_id
+ ├── title
+ ├── parent_id
+ └── embedding
+        │
+        │ node_id
+        ▼
+Separate content store
+ ├── node_id
+ ├── text
+ ├── page
+ └── metadata
+        │
+        ▼
+Query → embedding → similarity retrieval
+        ↓
+Relevant node IDs
+        ↓
+Fetch evidence text
+        ↓
+LLM
+        ↓
+Answer + citations
