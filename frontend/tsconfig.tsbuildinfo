@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/AnswerPanel.tsx","./src/components/DocumentTree.tsx","./src/components/LegalNode.tsx","./src/components/NodeDetails.tsx","./src/components/QueryPanel.tsx","./src/components/RetrievalResults.tsx","./src/components/UploadPanel.tsx","./src/services/api.ts","./src/types/index.ts"],"version":"5.9.3"}

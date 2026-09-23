@@ -1,0 +1,8 @@
+import { BookOpen, ChevronRight, SearchX } from "lucide-react";
+import type { QueryResult } from "../types";
+
+type RetrievalResultsProps = { results: QueryResult[]; selectedId: string | null; onSelect: (result: QueryResult) => void; error: string | null };
+
+export function RetrievalResults({ results, selectedId, onSelect, error }: RetrievalResultsProps) {
+  return <section className="results-panel"><div className="section-heading"><div><p className="eyebrow">Semantic retrieval</p><h2>Retrieved evidence</h2></div>{results.length > 0 && <span className="result-count">{results.length} matches</span>}</div>{error && <div className="inline-error"><SearchX size={16} />{error}</div>}{!error && results.length === 0 && <div className="results-empty"><BookOpen size={20} /><span>Ask a question to surface relevant sections.</span></div>}{results.length > 0 && <div className="result-list">{results.map((result, index) => <button key={result.id} className={`result-item ${selectedId === result.id ? "result-item--selected" : ""}`} onClick={() => onSelect(result)}><span className="result-item__rank">0{index + 1}</span><span className="result-item__body"><strong>{result.title}</strong><span>{result.text || "No evidence text returned for this node."}</span><small>{result.page_start ? `Page ${result.page_start}${result.page_end && result.page_end !== result.page_start ? `–${result.page_end}` : ""}` : "Page unavailable"}</small></span><span className="result-item__score">{result.similarity.toFixed(2)}<ChevronRight size={15} /></span></button>)}</div>}</section>;
+}

@@ -1,0 +1,10 @@
+import { Braces, ChevronRight, FileText, Hash, Layers3 } from "lucide-react";
+import type { ContentRecord, LegalNode, NodeStatus, QueryResult } from "../types";
+
+type NodeDetailsProps = { node: LegalNode | null; content?: ContentRecord; status?: NodeStatus; result?: QueryResult };
+
+export function NodeDetails({ node, content, status, result }: NodeDetailsProps) {
+  if (!node) return <aside className="detail-panel detail-panel--empty"><div className="detail-panel__ghost"><ChevronRight size={22} /><p>Select a node</p><span>Inspect its place in the document index</span></div></aside>;
+  const page = result?.page_start || content?.page_start;
+  return <aside className="detail-panel"><div className="detail-panel__header"><div className="detail-panel__symbol"><FileText size={18} /></div><div><p className="eyebrow">Node details</p><h2>{node.title}</h2></div></div><div className="detail-status"><span className={`status-dot status-dot--${status || "waiting"}`} />{status === "retrieved" ? "Retrieved evidence" : status === "indexed" ? "Embedding indexed" : "Structure mapped"}</div><div className="detail-facts"><div><Hash size={14} /><span>Type</span><strong>{node.type}</strong></div><div><Layers3 size={14} /><span>Parent</span><strong>{node.parent_id || "Root document"}</strong></div>{page && <div><FileText size={14} /><span>Page</span><strong>{page === (result?.page_end || content?.page_end) ? page : `${page}–${result?.page_end || content?.page_end}`}</strong></div>}{status === "indexed" || status === "retrieved" ? <div><Braces size={14} /><span>Embedding</span><strong>384 dimensions</strong></div> : null}</div>{result && <div className="detail-score"><span>Similarity</span><strong>{result.similarity.toFixed(3)}</strong><div><span style={{ width: `${Math.max(5, result.similarity * 100)}%` }} /></div></div>}{content?.text && <div className="detail-excerpt"><p className="eyebrow">Indexed content</p><p>{content.text}</p></div>}</aside>;
+}
