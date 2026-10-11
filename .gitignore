@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node and frontend build output
+node_modules/
+dist/
+build/
+.vite/
+*.tsbuildinfo
+
+# Local environment and logs
+.env
+.env.*
+*.log

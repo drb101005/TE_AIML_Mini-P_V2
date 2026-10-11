@@ -1,0 +1,15 @@
+import { useState } from "react";
+import { GitCompareArrows } from "lucide-react";
+import { compareVersions, type VersionChange } from "../services/api";
+
+type DocumentOption = { id: string; filename: string };
+export function VersionCompare({ documents, onSelect }: { documents: DocumentOption[]; onSelect: (id: string) => void }) {
+  const [before, setBefore] = useState("");
+  const [after, setAfter] = useState("");
+  const [changes, setChanges] = useState<VersionChange[] | null>(null);
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const run = async () => { setBusy(true); setError(""); try { const result = await compareVersions(before, after); setChanges(result.changes); setLabel(`${result.before.filename} → ${result.after.filename}`); } catch (e) { setError(e instanceof Error ? e.message : "Comparison failed."); } finally { setBusy(false); } };
+  return <section className="version-panel"><div className="section-heading"><div><p className="eyebrow">Version analysis</p><h2><GitCompareArrows size={18} /> Compare editions</h2></div></div><div className="version-controls"><select value={before} onChange={e => setBefore(e.target.value)} aria-label="Earlier edition"><option value="">Earlier edition</option>{documents.map(d => <option key={d.id} value={d.id}>{d.filename}</option>)}</select><span>to</span><select value={after} onChange={e => setAfter(e.target.value)} aria-label="Later edition"><option value="">Later edition</option>{documents.map(d => <option key={d.id} value={d.id}>{d.filename}</option>)}</select><button disabled={!before || !after || before === after || busy} onClick={() => void run()}>{busy ? "Comparing…" : "Compare"}</button></div>{error && <p className="inline-error">{error}</p>}{changes && <><p className="eyebrow version-label">{label} · {changes.length} changed clauses</p>{changes.length === 0 ? <p className="answer-panel__text">No changed sections detected.</p> : <div className="version-changes">{changes.map(change => <article className="version-change" key={change.section_number}><div className="version-change__heading"><strong>§ {change.section_number}</strong><span>{change.change}</span></div><div className="version-change__columns"><p><small>Earlier</small>{change.before?.text || "Section absent"}</p><p><small>Later</small>{change.after?.text || "Section absent"}</p></div>{(change.before || change.after) && <button className="version-source" onClick={() => onSelect((change.after || change.before)!.node_id)}>Open later clause and connections →</button>}{change.affected_relationships.length > 0 && <div className="version-impact"><small>{change.affected_relationships.length} connected relationship(s) may need review:</small>{change.affected_relationships.map(link => <button key={link.id} onClick={() => onSelect(link.source_id === (change.after || change.before)?.node_id ? link.target_id : link.source_id)}>{link.type.replace(/_/g, " ")} · inspect connected clause →</button>)}</div>}</article>)}</div>}</>}</section>;
+}

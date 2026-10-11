@@ -93,6 +93,8 @@ def search(
             "parent_id": node["parent_id"],
             "similarity": similarity,
             "text": content.get("text", ""),
+            "document_id": content.get("document_id"),
+            "filename": content.get("filename"),
             "page_start": content.get("page_start"),
             "page_end": content.get("page_end"),
         })
