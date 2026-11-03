@@ -61,6 +61,9 @@ export type QueryResponse = {
   query: string;
   results: QueryResult[];
   answer_claims: AnswerClaim[];
+  generated_answer?: string | null;
+  answer?: string | null;
+  generation_error?: string | null;
 };
 
 export type IndexResponse = {

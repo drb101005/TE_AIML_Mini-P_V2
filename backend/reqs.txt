@@ -5,3 +5,5 @@ pymupdf
 python-docx
 sentence-transformers
 numpy
+python-dotenv
+groq

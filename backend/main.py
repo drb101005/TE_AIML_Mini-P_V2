@@ -5,7 +5,19 @@ import numpy as np
 from copy import deepcopy
 from uuid import uuid4
 from difflib import SequenceMatcher
+import os
 import re
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional until dependencies are installed
+    load_dotenv = None
+
+try:
+    from groq import Groq
+except ImportError:  # pragma: no cover - optional until dependencies are installed
+    Groq = None
 
 from services.pdf_parser import extract_pdf_pages
 from services.tree_builder import build_document_structure
@@ -33,8 +45,52 @@ app.add_middleware(
 
 
 # ============================================================
-# IN-MEMORY STORAGE
+# ENVIRONMENT + IN-MEMORY STORAGE
 # ============================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_DIR = Path(__file__).resolve().parent
+for env_path in (PROJECT_ROOT / ".env", BACKEND_DIR / ".env"):
+    if env_path.exists() and load_dotenv is not None:
+        load_dotenv(env_path, override=False)
+
+
+def _get_groq_settings() -> tuple[str | None, str, str | None]:
+    api_key = os.getenv("GROQ_API_KEY", "").strip()
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip() or "openai/gpt-oss-20b"
+
+    if not api_key or api_key.lower() in {"your_groq_api_key_here", "changeme", "replace_me"}:
+        return None, model, "Set GROQ_API_KEY in the project .env file to enable answer generation."
+    return api_key, model, None
+
+
+def _generate_groq_answer(question: str, passages: list[str]) -> str:
+    api_key, model, error = _get_groq_settings()
+    if error:
+        raise RuntimeError(error)
+    if Groq is None:
+        raise RuntimeError("The groq package is not installed. Run: pip install -r backend/reqs.txt")
+
+    context = "\n\n".join(f"Clause {index + 1}:\n{section.strip()}" for index, section in enumerate(passages[:5]))
+    client = Groq(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a careful legal assistant. Use only the supplied clause excerpts to answer the user. If the excerpts do not contain the answer, say clearly that the evidence is insufficient and do not speculate,Along with that explain the findings, in 100 words",
+            },
+            {
+                "role": "user",
+                "content": f"Question: {question}\n\nRelevant clause excerpts:\n{context}\n\nAnswer the question using only the excerpts above. If you quote text, keep it brief and clearly attribute it to the source material.",
+            },
+        ],
+        temperature=0.1,  
+        max_tokens=900,
+    )
+
+    return response.choices[0].message.content.strip()
+
 
 embedding_indexes = {}
 content_stores = {}
@@ -177,6 +233,8 @@ async def _index_corpus(files: list[UploadFile]) -> dict:
                 filename=file.filename or "document.pdf",
                 document_id=document_id,
             )
+            if not structure["content_store"]:
+                raise ValueError("No text could be extracted. Check that the PDF has a readable text layer or that Tesseract OCR is installed.")
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Failed to process {filename}: {exc}")
         collection["children"].append(structure["tree"])
@@ -490,10 +548,23 @@ async def query_document(request: QueryRequest):
         claim = max(candidates, key=lambda sentence: len(query_terms & {term.lower() for term in re.findall(r"[a-zA-Z0-9]{3,}", sentence)}), default="")
         if claim:
             answer_claims.append({"text": claim, "source_id": result["id"], "filename": result.get("filename"), "section": result.get("title"), "page": result.get("page_start"), "similarity": result["similarity"]})
+
+    evidence_passages = [result.get("text", "").strip() for result in results if result.get("text", "").strip()]
+    generation_error = None
+    generated_answer = None
+    if evidence_passages:
+        try:
+            generated_answer = _generate_groq_answer(request.query, evidence_passages)
+        except Exception as exc:
+            generation_error = str(exc)
+
     return {
         "query": request.query,
         "results": results,
         "answer_claims": answer_claims,
+        "generated_answer": generated_answer,
+        "answer": generated_answer,
+        "generation_error": generation_error,
     }
 
 

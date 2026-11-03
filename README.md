@@ -26,7 +26,25 @@ Open the Vite URL shown in the terminal. The frontend uses `http://localhost:800
 
 The first indexing request loads the Sentence Transformers embedding model. Add multiple PDF, DOCX, and TXT files at once or add more to the current collection (up to 100 files). Later batches send only the new files; the backend updates the combined index and the page can restore the collection after a browser refresh. The collection is held in backend memory, so it is cleared when the backend restarts.
 
+The query endpoint retrieves the most relevant passages and then sends the user's question together with those clause excerpts to Groq for a final generated answer. Set up your single project-level `.env` file with a Groq key and model before asking questions.
+
 Scanned PDF pages use PyMuPDF OCR when a page has no extractable text. Install Tesseract OCR and the language data needed for your documents on the backend machine. DOCX and TXT files are indexed as text; their displayed page location is the extracted document page (currently page 1), since pagination depends on the word processor and layout.
+
+Create a single `.env` file at the repository root (or inside `backend/` if you prefer) with:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+```
+
+Then install dependencies:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r reqs.txt
+```
 
 ## What the interface supports
 

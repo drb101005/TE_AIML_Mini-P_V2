@@ -7,7 +7,8 @@ CHAPTER_PATTERN = re.compile(
 )
 
 SECTION_PATTERN = re.compile(
-    r"^(\d+[A-Z]?(?:-[A-Z])?)\.\s+(.+)$"
+    r"^(?:(?:section|sec\.?)\s+)?(\d+[A-Z]?(?:-[A-Z])?)[.)]\s+(.+)$",
+    re.IGNORECASE,
 )
 
 SECTION_REFERENCE_PATTERN = re.compile(
@@ -214,6 +215,43 @@ def build_document_structure(
                 content_pages[current_section_id].setdefault(page_number, []).append(line)
 
             i += 1
+
+    # Keep documents searchable even when their headings do not match the
+    # legal-section patterns above. Split their extracted pages into passages.
+    if not content_store:
+        for page in pages[start_index:]:
+            page_number = page["page"]
+            text = re.sub(r"\s+", " ", page.get("text", "")).strip()
+            if not text:
+                continue
+            chunks = []
+            remaining = text
+            while remaining:
+                if len(remaining) <= 1400:
+                    chunks.append(remaining)
+                    break
+                cut = remaining.rfind(" ", 0, 1400)
+                if cut < 900:
+                    cut = 1400
+                chunks.append(remaining[:cut].strip())
+                remaining = remaining[max(cut - 120, 0):].strip()
+            for passage_number, passage in enumerate(chunks, start=1):
+                section_number = f"P{page_number}-C{passage_number}"
+                section_id = f"{root_id}-page-{page_number}-passage-{passage_number}"
+                title = f"Page {page_number} · Passage {passage_number}"
+                section_node = create_node(section_id, title, "section", current_parent["id"])
+                current_parent["children"].append(section_node)
+                content_store[section_id] = {
+                    "node_id": section_id,
+                    "document_id": document_id,
+                    "filename": filename,
+                    "section_number": section_number,
+                    "title": title,
+                    "text": passage,
+                    "page_start": page_number,
+                    "page_end": page_number,
+                }
+                content_pages[section_id] = {page_number: [passage]}
 
     # Resolve explicit section references after all section IDs are known.
     # Each link keeps its supporting sentence and source page.
